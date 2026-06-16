@@ -14,6 +14,11 @@ android {
         dataBinding = true
         viewBinding = true
     }
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    }
     namespace = pkg
     defaultConfig {
         applicationId = pkg
