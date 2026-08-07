@@ -1,0 +1,38 @@
+steps:
+
+  # Step 1: Ensure all tags and submodules are loaded
+  - name: 'gcr.io/cloud-builders/git'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        ([[ -d .git ]] && (git fetch --unshallow --tags; git submodule update --init --recursive)) || true
+
+  # Step 2: Build the unsigned release APK using the custom builder image
+  - name: '${_SDK_IMAGE}:${_SDK_TAG}'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        chmod +x ./build-unsigned.sh
+        ./build-unsigned.sh
+
+  # Step 3: Locate the built APK and upload it to the generic Artifact Registry repository
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+        source /workspace/build.env
+        gcloud storage cp "$$OUTPUT_APK" "gs://${_UNSIGNED_APK_BUCKET}/$${OUTPUT_APK}"
+
+
+substitutions:
+  _SDK_IMAGE: 'asia-docker.pkg.dev/${PROJECT_ID}/docker-repo/android-builder' # The builder image which has Android SDK and build tools installed
+  _UNSIGNED_APK_BUCKET: 'generic-artifacts-asia' # The GCS Bucket for uploading unsigned APK
+  _SDK_TAG: 'sdk-36-jdk17'                         # Tag of the custom builder image to use (e.g., sdk-36-jdk17, latest)
+
+options:
+  machineType: 'E2_HIGHCPU_32'
+  logging: 'CLOUD_LOGGING_ONLY'
